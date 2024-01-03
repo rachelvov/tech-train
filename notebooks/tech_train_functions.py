@@ -1,3 +1,4 @@
+import time
 import openai
 
 import json
@@ -36,6 +37,28 @@ def call_open_ai(system_message, text, engine="gpt-35-turbo", examples=[], clien
         message_text.append({"role": "user", "content": example[0]})
         message_text.append({"role": "assistant", "content": example[1]})
     message_text.append({"role": "user", "content": text})
+    try:
+        response = call_client_or_completion(system_message, text, message_text, engine, client, temprature)
+    except openai.error.RateLimitError as e:
+        # wait 10 seconds and try again
+        print("Rate limit exceeded. Waiting 10 seconds and trying again...")
+        time.sleep(10)
+        response = call_client_or_completion(system_message, text, message_text, engine, client, temprature)
+    return response
+
+
+def call_client_or_completion(system_message, text, message_text, engine="gpt-35-turbo", client=None, temprature=0):
+    """
+    Call the openAI client or the openAI completion API
+    :param system_message: The system message
+    :param text: The user message
+    :param message_text: The entire conversation
+    :param engine: The openAI engine
+    :param client: The openAI client
+    :param temprature: The openAI temprature
+    :return: The openAI response
+    """
+    
     if client==None: #use azure openAI
         completion = openai.ChatCompletion.create(
             engine=engine,
@@ -47,6 +70,7 @@ def call_open_ai(system_message, text, engine="gpt-35-turbo", examples=[], clien
             presence_penalty=0,
             stop=None
         )
+
 
         if "content" in completion["choices"][0]["message"]:
                 return completion["choices"][0]["message"]["content"]
@@ -71,8 +95,6 @@ def call_open_ai(system_message, text, engine="gpt-35-turbo", examples=[], clien
         )
         
         return completion.choices[0].message.content
-     
-    
 
 def is_similar(gold_answer, gold_answer_idx, answer):
         if len(answer) == 1:
