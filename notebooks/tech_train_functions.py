@@ -7,28 +7,77 @@ import os
 import requests
 
 
-class TA4HPredictor:
-    def __init__(self):
-        self.endpoint = os.getenv("TA4H_ENDPOINT")
 
-    def predict_ta4h(self, texts):
-        """
-        call TA4H API to get entities and relations
-        This assumes a ta4h synchronous endpoint. This currently only exists on the onprem container,
-        at {base_url}/text/analytics/v3.1/entities/health.
+import os
+from azure.core.credentials import AzureKeyCredential
+from azure.ai.textanalytics import (
+        TextAnalyticsClient,
+        AnalyzeHealthcareEntitiesAction,
+        RecognizePiiEntitiesAction,
+    )
 
-        :param text:
-        :return: list of entities and relations
-       """
-        payload = json.dumps({
-            "documents": [{"id": idx, "text": text} for idx, text in enumerate(texts)],
-            "output_format": "ayalon"
-        })
-        headers = {'Content-Type': 'application/json'}
-        response = requests.request("POST", self.endpoint, headers=headers, data=payload)
-        response = json.loads(response.text)
-        entities = [r["entities"] for r in response['documents']]
-        return entities
+
+
+def sample_analyze_healthcare_action(endpoint, key, documents) -> None:
+    
+
+
+
+    text_analytics_client = TextAnalyticsClient(
+        endpoint=endpoint,
+        credential=AzureKeyCredential(key),
+    )
+
+
+    poller = text_analytics_client.begin_analyze_actions(
+        documents,
+        display_name="Sample Text Analysis",
+        actions=[
+            AnalyzeHealthcareEntitiesAction(),
+            RecognizePiiEntitiesAction(domain_filter="phi"),
+        ],
+    )
+
+    document_results = poller.result()
+    for doc, action_results in zip(documents, document_results):
+        print(f"\nDocument text: {doc}")
+        for result in action_results:
+            if result.kind == "Healthcare":
+                print("...Results of Analyze Healthcare Entities Action:")
+                for entity in result.entities:
+                    print(f"Entity: {entity.text}")
+                    print(f"...Normalized Text: {entity.normalized_text}")
+                    print(f"...Category: {entity.category}")
+                    print(f"...Subcategory: {entity.subcategory}")
+                    print(f"...Offset: {entity.offset}")
+                    print(f"...Confidence score: {entity.confidence_score}")
+                    if entity.data_sources is not None:
+                        print("...Data Sources:")
+                        for data_source in entity.data_sources:
+                            print(f"......Entity ID: {data_source.entity_id}")
+                            print(f"......Name: {data_source.name}")
+                    if entity.assertion is not None:
+                        print("...Assertion:")
+                        print(f"......Conditionality: {entity.assertion.conditionality}")
+                        print(f"......Certainty: {entity.assertion.certainty}")
+                        print(f"......Association: {entity.assertion.association}")
+                for relation in result.entity_relations:
+                    print(f"Relation of type: {relation.relation_type} has the following roles")
+                    for role in relation.roles:
+                        print(f"...Role '{role.name}' with entity '{role.entity.text}'")
+
+            elif result.kind == "PiiEntityRecognition":
+                print("Results of Recognize PII Entities action:")
+                for pii_entity in result.entities:
+                    print(f"......Entity: {pii_entity.text}")
+                    print(f".........Category: {pii_entity.category}")
+                    print(f".........Confidence Score: {pii_entity.confidence_score}")
+
+            elif result.is_error is True:
+                print(f"...Is an error with code '{result.error.code}' and message '{result.error.message}'")
+
+            print("------------------------------------------")
+
     
 
 def call_open_ai(system_message, text, engine="gpt-35-turbo", examples=[], client=None, temprature=0):
