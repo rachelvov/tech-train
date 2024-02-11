@@ -1,3 +1,6 @@
 tqdm==4.64.0
 openai==0.27.4
 rank-bm25==0.2.2
+azure-ai-textanalytics==5.3.0
+azure-common==1.1.28
+azure-core==1.30.0
