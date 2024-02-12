@@ -18,7 +18,7 @@ from azure.ai.textanalytics import (
 
 
 
-def sample_analyze_healthcare_action(endpoint, key, documents) -> None:
+def analyze_TA4H(endpoint, key, documents) -> None:
     
 
 
@@ -39,44 +39,10 @@ def sample_analyze_healthcare_action(endpoint, key, documents) -> None:
     )
 
     document_results = poller.result()
+    all_res = []
     for doc, action_results in zip(documents, document_results):
-        print(f"\nDocument text: {doc}")
-        for result in action_results:
-            if result.kind == "Healthcare":
-                print("...Results of Analyze Healthcare Entities Action:")
-                for entity in result.entities:
-                    print(f"Entity: {entity.text}")
-                    print(f"...Normalized Text: {entity.normalized_text}")
-                    print(f"...Category: {entity.category}")
-                    print(f"...Subcategory: {entity.subcategory}")
-                    print(f"...Offset: {entity.offset}")
-                    print(f"...Confidence score: {entity.confidence_score}")
-                    if entity.data_sources is not None:
-                        print("...Data Sources:")
-                        for data_source in entity.data_sources:
-                            print(f"......Entity ID: {data_source.entity_id}")
-                            print(f"......Name: {data_source.name}")
-                    if entity.assertion is not None:
-                        print("...Assertion:")
-                        print(f"......Conditionality: {entity.assertion.conditionality}")
-                        print(f"......Certainty: {entity.assertion.certainty}")
-                        print(f"......Association: {entity.assertion.association}")
-                for relation in result.entity_relations:
-                    print(f"Relation of type: {relation.relation_type} has the following roles")
-                    for role in relation.roles:
-                        print(f"...Role '{role.name}' with entity '{role.entity.text}'")
-
-            elif result.kind == "PiiEntityRecognition":
-                print("Results of Recognize PII Entities action:")
-                for pii_entity in result.entities:
-                    print(f"......Entity: {pii_entity.text}")
-                    print(f".........Category: {pii_entity.category}")
-                    print(f".........Confidence Score: {pii_entity.confidence_score}")
-
-            elif result.is_error is True:
-                print(f"...Is an error with code '{result.error.code}' and message '{result.error.message}'")
-
-            print("------------------------------------------")
+        all_res.append(action_results[0].entities)
+    return all_res
 
     
 
@@ -124,7 +90,7 @@ def call_client_or_completion(system_message, text, message_text, engine="gpt-35
         if "content" in completion["choices"][0]["message"]:
                 return completion["choices"][0]["message"]["content"]
         else:
-                print(completion)
+                print("error!\n" +str(message_text[-1])+"\n "+str(completion))
                 return "none"
     else: #use openAI studio
         if engine=="gpt-35-turbo":
